@@ -1,0 +1,33 @@
+select 
+'SOPO' as "Document_Type",
+po.name as "Po_name",
+po.partner_ref as "So_name", 
+rcs.name as "From_State",
+sw1.type as "From_Wh_type",
+sw1.name "From_warehouse",
+rcs2.name as "To_State" ,
+sw.type as "To_Wh_type",
+sw.name as "To_warehouse", 
+pp.default_code as "SKU",
+Sum(pol.product_uom_qty) as "Quantity",
+po.date_order::date ,
+po.effective_date::date 
+,(po.effective_date::date - po.date_order::date ) as Time_taken ,
+po.purchase_status as "Status"
+from purchase_order po 
+left join res_partner rp on rp.id = po.partner_id 
+left join res_country_state rcs on rcs.id = rp.state_id
+left join purchase_order_line pol on po.id = pol.order_id 
+left join product_product pp on pp.id = pol.product_id 
+left join res_partner rp2 on po.billing_address_id = rp2.id
+left join res_country_state rcs2 on rcs2.id = rp2.state_id
+left Join Stock_picking Sp on SP.origin = Po.name
+left join stock_picking_type spt  on spt.id = po.picking_type_id 
+left join stock_warehouse SW on spt.warehouse_id = SW.id
+left join sale_order so on so.name = po.partner_ref
+left join stock_warehouse SW1 on so.warehouse_id = SW1.id
+where po.purchase_status in ('sent','closed','full_return','partially_received','partially_return')
+and po.date_order >= current_date - interval '90 days'
+and (rp.name ilike '%Earth paw%' OR rp.name ilike '%Barkyard%') 
+group by po.name , po.partner_ref , rp.name, rp2.name ,
+pp.default_code, po.date_order, po.purchase_status,po.effective_date,rcs."name" ,rcs2.name,sw.name,SW1.name,Sw1.type,Sw.type
