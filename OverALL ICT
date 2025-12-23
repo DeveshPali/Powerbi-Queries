@@ -1,0 +1,16 @@
+Select ICT.Name as "ICT_name",SW.name as "Source Warehouse name",sw.type as "Source Type",rcs1.name as "From State", SW1.name as "Destination warehouse name", Sw1.type as "Destination Type",rcs.name as "To State", ICT.ict_status,
+ICTL.product_id,
+ICTL.qty_delivered as "QTY delivered",ICTL.price as "Cost recieved",ICT.processed_date::date as "Processed date",ICT.transfer_date::date as "transfer date" from inter_company_transfer_ept ICT
+inner join inter_company_transfer_line_ept ICTL on ICTL.inter_transfer_id = ICT.ID
+inner join Stock_warehouse SW on SW.id = ICT.Source_warehouse_id
+inner join Stock_warehouse SW1 on SW1.id = ICT.destination_warehouse_id
+inner join res_partner rp on sw1.partner_id = rp.id 
+inner join res_partner rp1 on sw.partner_id = rp1.id 
+inner join res_country_state rcs on rcs.id = rp.state_id 
+inner join res_country_state rcs1 on rcs1.id = rp1.state_id 
+where ICT.ict_status = 'stock_in' and ICT.processed_date >= '2024-04-01' 
+group by ICT.name,SW.name,rcs.name,rcs1.name, 
+ICT.ict_status,
+ICTL.qty_delivered,ICTL.price,SW1.name,
+ICT.transfer_date,ICT.processed_date,sw.type,sw1.type,ICTL.product_id
+order by ICT.processed_date asc
