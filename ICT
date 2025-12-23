@@ -1,0 +1,31 @@
+Select 'ICT' as "Document_Type",
+'ICT' as "Po_name",
+ICT.Name as "So_name",
+rcs1.name as "From_State",
+sw.type as "From_Wh_type",
+SW.name as "From_warehouse",
+rcs.name as "To_State",
+Sw1.type as "To_Wh_type",
+SW1.name as "To_warehouse",
+cm.sku as "SKU",
+ICTL.qty_delivered as "Quantity",
+ICT.processed_date::date as "date_order"
+,ICT.transfer_date::date as "effective_date"
+,(ICT.processed_date::date- ICT.transfer_date::date) as Time_taken,
+ICT.ict_status as "Status"
+from inter_company_transfer_ept ICT
+inner join inter_company_transfer_line_ept ICTL on ICTL.inter_transfer_id = ICT.ID
+inner join Stock_warehouse SW on SW.id = ICT.Source_warehouse_id
+inner join Stock_warehouse SW1 on SW1.id = ICT.destination_warehouse_id
+inner join res_partner rp on sw1.partner_id = rp.id 
+inner join res_partner rp1 on sw.partner_id = rp1.id 
+inner join catalog_master cm on cm.id = ictl.product_id 
+inner join res_country_state rcs on rcs.id = rp.state_id 
+inner join res_country_state rcs1 on rcs1.id = rp1.state_id 
+where ICT.ict_status = 'stock_in' and ICT.processed_date >=  CURRENT_DATE - interval '90 days'
+--AND ICT.processed_date < date_trunc('month', CURRENT_DATE)
+group by ICT.name,SW.name,rcs.name,rcs1.name, 
+ICT.ict_status,
+ICTL.qty_delivered,SW1.name,
+ICT.transfer_date,ICT.processed_date,sw.type,sw1.type,cm.sku
+order by ICT.processed_date desc
