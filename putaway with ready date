@@ -1,0 +1,45 @@
+Select Sp.id,sl3.name as Pick_From,sm.write_date,sm.write_date + INTERVAL '5 hours 30 minutes' as document_date,
+mtv.cc + interval '5 hour 30 Minutes' as ready_date,
+sm.reference,Coalesce(SM.Origin,Sm.name) as Origin,sp.scheduled_date::date as scheduled_date,MIN(SMO.date) as GRN_date,SM.quantity as product_uom_qty,
+PP.default_code as "Main Sku",PT.name ->> 'en_US' as "Product Name",product_brand.name as Brand,Parent.name as Category,Product_category.name as Sub_Category,SW.name as warehouse
+from stock_move SM
+Inner Join Stock_location Sl On SL.id = SM.location_id
+inner join stock_picking sp on sp.id = sm.picking_id 
+Inner Join Stock_location SL1 on SL1.id = SM.location_dest_id
+Inner Join Stock_warehouse SW on SW.id = SM.warehouse_id
+inner join product_product PP on PP.id = SM.product_id
+inner join stock_move_line sml on sml.move_id = sm.id 
+Inner Join Stock_location Sl3 On SL3.id = SMl.location_id
+left join(select * from mail_message mm
+where model = 'stock.picking' ) mm
+on mm.res_id = sp.id
+left join (
+select mail_message_id,cc from
+(select mtv.mail_message_id,mtv.create_date as cc,row_number() over (partition by mail_message_id order by create_date desc ) as rn from mail_tracking_value mtv 
+where mtv.old_value_char = 'Waiting Another Operation' and mtv.new_value_char = 'Ready'
+group by mtv.mail_message_id,mtv.create_date)k
+where K.rn = 1
+group by mail_message_id,cc
+) mtv on mtv.mail_message_id = mm.id
+inner join product_template PT on PT.id = PP.product_tmpl_id
+inner join brand_brand on PT.brand_p_id = brand_brand.id
+inner join team_team TT on PT.Team_id = TT.id
+inner join product_category on product_category.id = PT.categ_id
+inner join product_category as Parent on 
+Case when product_category.parent_id is null then parent.id = PT.categ_id
+     when product_category.parent_id is not null then product_category.parent_id = parent.id 
+ end
+ inner join product_brand ON product_brand.id = PT.product_brand_id
+ left Join (Select MIN(SM.date::date) as date,SM.origin as PO_Number
+from Stock_move SM
+left join res_company rc on rc.id = sm.company_id
+where 
+(SM.location_id = '4' OR SM.location_dest_id = '4') and coalesce(rc.parent_id,rc.id) in  ( '1') and SM.state = 'done' and SM.date::date > '2024-04-01' 
+group by SM.origin) as SMO ON SMO.PO_number = SM.Origin
+ Where SL.name ilike '%Input%' and SL1.name Ilike '%Stock%' and SM.state in ('assigned','partially_available') --and sp.state = 'Done'
+ --and sm.origin = 'PO/B/25/05977'
+ -- and sm.reference = 'BWHMH/INT/08717' 
+ and mtv.cc is not null
+ group by  SM.Origin,SM.quantity, 
+PP.default_code,PT.name,product_brand.name,Parent.name,Product_category.name,SW.name,sm.origin,sp.name,
+sp.scheduled_date,sm.reference,sm.write_date,Sm.name,sl3.name,SP.id,mtv.cc
